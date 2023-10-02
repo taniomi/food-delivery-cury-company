@@ -1,7 +1,9 @@
 import pandas as pd
+import numpy as np
 import re
 from haversine import haversine
 import plotly.express as px
+import plotly.graph_objects as go
 import folium
 import streamlit as st
 from datetime import datetime
@@ -46,7 +48,7 @@ df['Week_Year'] = df['Order_Date'].dt.strftime('%U')
 # 2 Streamlit                                                        #
 #====================================================================#
 # 2.1 Main Page
-st.header('Cury Co. Ltd. - Deliverer View')
+st.header('Cury Co. Ltd. - Restaurant View')
 st.write('Fast and savory food! Curry is the best food!😋')
 
 # 2.2 Sidebar
@@ -75,80 +77,108 @@ tab1, tab2, tab3 = st.tabs(['Management View', '_', '_'])
 with tab1:
     with st.container():
         st.title('Overall Metrics')
-        col1, col2, col3, col4 = st.columns(4, gap='large')
+        col1, col2, col3 = st.columns(3, gap='large')
         
         with col1:
-            oldest = df['Delivery_person_Age'].max()
-            col1.metric('Oldest', oldest)
+            delivery_unique = df.loc[:,'Delivery_person_ID'].nunique()
+            col1.metric('Deliverers', delivery_unique)
 
         with col2:
-            youngest = df['Delivery_person_Age'].min()
-            col2.metric('Youngest', youngest)
+            dfaux = (df.loc[:, 
+                           ['Restaurant_latitude', 
+                            'Restaurant_longitude', 
+                            'Delivery_location_latitude', 
+                            'Delivery_location_longitude']])
+            dfaux['Distance'] = (dfaux.apply(lambda x: 
+                                haversine((x['Restaurant_latitude'], 
+                                           x['Restaurant_longitude']), 
+                                          (x['Delivery_location_latitude'], 
+                                           x['Delivery_location_longitude'])), 
+                                axis=1))
+            mean_dist = dfaux['Distance'].mean()
+            col2.metric('Mean distance', mean_dist)
 
         with col3:
-            best_vehicle_cond = df['Vehicle_condition'].max()
-            col3.metric('Best vehicle', best_vehicle_cond)
+            mean_time_festival = (df.loc[df.loc[:, 'Festival'] == 'Yes', 
+                                         'Time_taken(min)']
+                                    .mean())
+            col3.metric('Mean time festival', mean_time_festival)
 
+    with st.container():
+        col4, col5, col6 = st.columns(3, gap='small')
         with col4:
-            worst_vehicle_cond = df['Vehicle_condition'].min()
-            col4.metric('Worst vehicle', worst_vehicle_cond)
+            std_time_festival = (df.loc[df.loc[:, 'Festival'] == 'Yes', 
+                                        'Time_taken(min)']
+                                    .std())
+            col4.metric('Std deviation time festival', std_time_festival)
+
+        with col5:
+            mean_time_no_festival = (df.loc[df.loc[:, 'Festival'] == 'No', 
+                                            'Time_taken(min)']
+                                       .mean())
+            col5.metric('Mean time no festival', mean_time_no_festival)
+
+        with col6:
+            std_time_no_festival = (df.loc[df.loc[:, 'Festival'] == 'No', 
+                                           'Time_taken(min)']
+                                      .std())
+            col6.metric('Std deviation time no festival', std_time_no_festival)
 
     with st.container():
         st.markdown("""---""")
-        st.title('Ratings')
-        col1, col2 = st.columns(2)
+        st.title('Mean distance')
 
-        with col1:
-            st.subheader('Mean ratings by deliverer')
-            mean_rating_by_deliv = (df.loc[:,['Delivery_person_ID', 'Delivery_person_Ratings']]
-                                      .groupby('Delivery_person_ID')
-                                      .mean()
-                                      .reset_index())
-            st.dataframe(mean_rating_by_deliv)
-
-        with col2:
-            st.subheader('Mean ratings by traffic conditions')
-            mean_rating_by_traffic = (df.loc[:,['Delivery_person_Ratings','Road_traffic_density']]
-                                        .groupby('Road_traffic_density')
-                                        .agg({'Delivery_person_Ratings': ['mean', 'std']}))
-            mean_rating_by_traffic.columns = ['delivery_mean', 'delivery_std']
-            mean_rating_by_traffic.reset_index()
-            st.dataframe(mean_rating_by_traffic)
-
-            st.subheader('Mean ratings by climate conditions')
-            mean_rating_by_climate = (df.loc[:,['Delivery_person_Ratings','Weatherconditions']]
-                                        .groupby('Weatherconditions')
-                                        .agg({'Delivery_person_Ratings': ['mean', 'std']}))
-            mean_rating_by_climate.columns = ['delivery_mean', 'delivery_std']
-            mean_rating_by_climate.reset_index()
-            st.dataframe(mean_rating_by_climate)
+        dfaux = (df.loc[:, 
+                        ['City',
+                         'Restaurant_latitude', 
+                         'Restaurant_longitude', 
+                         'Delivery_location_latitude', 
+                         'Delivery_location_longitude']])
+        dfaux['Distance'] = (dfaux.apply(lambda x: 
+                             haversine((x['Restaurant_latitude'], 
+                                        x['Restaurant_longitude']), 
+                                       (x['Delivery_location_latitude'], 
+                                        x['Delivery_location_longitude'])),
+                             axis=1))
+        avg_dist = (dfaux.loc[:, ['City', 'Distance']]
+                         .groupby('City')
+                         .mean()
+                         .reset_index())
+        fig_avg_dist = go.Figure(data=[go.Pie(labels=avg_dist['City'],
+                                              values=avg_dist['Distance'],
+                                              hole=0.5)])
+        st.plotly_chart(fig_avg_dist)
 
     with st.container():
         st.markdown("""---""")
-        st.title('Delivery speed')
-        col1, col2 = st.columns(2)
+        st.title('Mean delivery time by city')
+        dfaux = (df.loc[:, ['City', 'Time_taken(min)']]
+                   .groupby('City')
+                   .agg({'Time_taken(min)': ['mean', 'std']})
+                   .reset_index())
+        dfaux.columns = ['City', 'Mean_time', 'Std_deviation_time']
+        fig_time_city = go.Figure()
+        fig_time_city.add_trace(go.Bar(name='Control',
+                                       x=dfaux['City'],
+                                       y=dfaux['Mean_time'],
+                                       error_y=dict(type='data',
+                                       array=dfaux['Std_deviation_time'])))
+        fig_time_city.update_layout(barmode='group')
+        st.plotly_chart(fig_time_city)
 
-        with col1:
-            st.subheader('Fastest deliverers')
-            dfaux = (df.loc[:,['Delivery_person_ID', 'City', 'Time_taken(min)']]
-                       .groupby(['City', 'Delivery_person_ID']).min()
-                       .sort_values(['City', 'Time_taken(min)']).reset_index())
-            dfaux1 = dfaux.loc[dfaux['City'] == 'Metropolitian', :].head(10)
-            dfaux2 = dfaux.loc[dfaux['City'] == 'Semi-Urban', :].head(10)
-            dfaux3 = dfaux.loc[dfaux['City'] == 'Urban', :].head(10)
-            fastest_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
-            st.dataframe(fastest_deliverers)
- 
-        with col2:
-            st.subheader('Slowest deliverers')
-            dfaux = (df.loc[:,['Delivery_person_ID', 'City', 'Time_taken(min)']]
-                       .groupby(['City', 'Delivery_person_ID']).max()
-                       .sort_values(['City', 'Time_taken(min)'], ascending=False).reset_index())
-            dfaux1 = dfaux.loc[dfaux['City'] == 'Metropolitian', :].head(10)
-            dfaux2 = dfaux.loc[dfaux['City'] == 'Semi-Urban', :].head(10)
-            dfaux3 = dfaux.loc[dfaux['City'] == 'Urban', :].head(10)
-            slowest_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
-            st.dataframe(slowest_deliverers)
+    with st.container():
+        st.markdown("""---""")
+        st.title('Time distribution')
+        dfaux = (df.loc[:, ['City', 'Road_traffic_density', 'Time_taken(min)']]
+                   .groupby(['City', 'Road_traffic_density'])
+                   .agg({'Time_taken(min)': ['mean', 'std']}))
+        dfaux.columns = ['Time_mean', 'Time_std']
+        dfaux = dfaux.reset_index()
+        fig_sun = px.sunburst(dfaux,path=['City', 'Road_traffic_density'],
+                                    values='Time_mean',color='Time_std',
+                                    color_continuous_scale='icefire',
+                                    color_continuous_midpoint=np.average(dfaux['Time_std']))
+        st.plotly_chart(fig_sun)
 
 # 2.3.2 Tactical View
 with tab2:
@@ -183,7 +213,10 @@ with tab2:
 
 # 2.3.4 Map
 with tab3:
-    city_location_traffic = (df.loc[:,['City','Road_traffic_density','Delivery_location_latitude','Delivery_location_longitude']]
+    city_location_traffic = (df.loc[:,['City',
+                                       'Road_traffic_density',
+                                       'Delivery_location_latitude',
+                                       'Delivery_location_longitude']]
                              .groupby(['City','Road_traffic_density'])
                              .median().reset_index())
     city_location_traffic = (city_location_traffic.loc[
