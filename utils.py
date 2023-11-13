@@ -2,10 +2,11 @@ import pandas as pd
 import numpy as np
 import re
 from haversine import haversine
+from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import folium
-from datetime import datetime
+import streamlit as st
 
 def clean_df(df):
     """
@@ -53,6 +54,30 @@ def clean_df(df):
 
 
 
+def filters_df(df):
+    filter_date = st.sidebar.slider('Choose dates:',
+                                    value=datetime(2022, 4, 13),
+                                    min_value=datetime(2022, 2, 11),
+                                    max_value=datetime(2022, 4, 6),
+                                    format='DD-MM-YY')
+    filter_traffic = st.sidebar.multiselect('Choose traffic conditions:',
+                                            ['Low','Medium','High','Jam'],
+                                            default=['Low','Medium','High','Jam'])
+    filtered_lines = ((df['Order_Date'] < filter_date)
+                      & (df['Road_traffic_density'].isin(filter_traffic)))
+    df = df.loc[filtered_lines,:]
+
+    return df
+
+
+
+def fest_time(df, festival):
+    festival_time = df.loc[df.loc[:, 'Festival'] == festival, 'Time_taken(min)']
+
+    return festival_time
+
+
+
 def calc_mean_dist(df):
     dfaux = (df.loc[:, 
                    ['Restaurant_latitude', 
@@ -91,7 +116,7 @@ def plot_fig_mean_dist(df):
     fig_mean_dist = go.Figure(data=[go.Pie(labels=mean_dist['City'],
                                            values=mean_dist['Distance'],
                                            hole=0.5)])
-    return fig_mean_dist
+    return st.plotly_chart(fig_mean_dist)
 
 
 
@@ -110,7 +135,7 @@ def plot_fig_time_city(df):
                                    array=dfaux['Std_deviation_time'])))
     fig_time_city.update_layout(barmode='group')
 
-    return fig_time_city
+    return st.plotly_chart(fig_time_city)
 
 
 
@@ -125,7 +150,7 @@ def plot_fig_sun(df):
                           values='Time_mean',color='Time_std',
                           color_continuous_scale='icefire',
                           color_continuous_midpoint=np.average(dfaux['Time_std']))
-    return fig_sun
+    return st.plotly_chart(fig_sun)
 
 
 
@@ -136,7 +161,7 @@ def plot_chart_week(df):
     chart_week = px.line(pedidos_por_semana,title='Orders per week',
                          x='Week_Year',y='ID',
                          height=350)
-    return chart_week
+    return st.plotly_chart(chart_week)
 
 
 
@@ -154,21 +179,20 @@ def plot_chart_deliverer_wk(df):
     chart_deliverer_wk = px.line(df_merge,title='Orders by deliverer per week',
                                  x='Week_Year',y='Order_by_deliverer',
                                  height=350)
-    return chart_deliverer_wk
+    return st.plotly_chart(chart_deliverer_wk)
     
 
 
 def plot_city_location_traffic(df):
+    city_location_traffic = df[(df['City'] != 'NaN') & (df['Road_traffic_density'] != 'NaN')]
     city_location_traffic = (df.loc[:,['City',
                                        'Road_traffic_density',
                                        'Delivery_location_latitude',
                                        'Delivery_location_longitude']]
-                             .groupby(['City','Road_traffic_density'])
-                             .median().reset_index())
-    city_location_traffic = (city_location_traffic.loc[
-                             city_location_traffic.loc[:,'City'] != 'NaN',
-                             :])
-    city_location_traffic = (city_location_traffic.loc[
-                             city_location_traffic.loc[:,'Road_traffic_density'] != 'NaN',
-                             :])
-    return city_location_traffic
+                                .groupby(['City','Road_traffic_density'])
+                                .median().reset_index())
+    map = st.map(city_location_traffic,
+                 latitude='Delivery_location_latitude',
+                 longitude='Delivery_location_longitude',
+                 size='City')
+    return map

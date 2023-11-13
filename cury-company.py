@@ -1,4 +1,3 @@
-import streamlit as st
 from utils import *
 
 if __name__ == "__main__":
@@ -17,18 +16,8 @@ if __name__ == "__main__":
         st.markdown('# Cury Co. Ltd.')
         st.markdown("""---""")
     
-    filter_date = st.sidebar.slider('Choose dates:',
-                                    value=datetime(2022, 4, 13),
-                                    min_value=datetime(2022, 2, 11),
-                                    max_value=datetime(2022, 4, 6),
-                                    format='DD-MM-YY')
-    filter_traffic = st.sidebar.multiselect('Choose traffic conditions:',
-                                            ['Low','Medium','High','Jam'],
-                                            default=['Low','Medium','High','Jam'])
-    filtered_lines = ((df['Order_Date'] < filter_date)
-                      & (df['Road_traffic_density'].isin(filter_traffic)))
-    df = df.loc[filtered_lines,:]
-    
+        df = filters_df(df)
+
     st.sidebar.markdown('Powered by Taniomi')
     
     ## 2.3 Tabs
@@ -49,66 +38,49 @@ if __name__ == "__main__":
                 col2.metric('Mean distance', mean_dist)
     
             with col3:
-                mean_time_festival = (df.loc[df.loc[:, 'Festival'] == 'Yes', 
-                                             'Time_taken(min)']
-                                        .mean())
+                mean_time_festival = fest_time(df, festival='Yes').mean()
                 col3.metric('Mean time festival', mean_time_festival)
     
         with st.container():
             col4, col5, col6 = st.columns(3, gap='small')
             with col4:
-                std_time_festival = (df.loc[df.loc[:, 'Festival'] == 'Yes', 
-                                            'Time_taken(min)']
-                                       .std())
+                std_time_festival = fest_time(df, festival='Yes').std()
                 col4.metric('Std deviation time festival', std_time_festival)
     
             with col5:
-                mean_time_no_festival = (df.loc[df.loc[:, 'Festival'] == 'No', 
-                                                'Time_taken(min)']
-                                           .mean())
+                mean_time_no_festival = fest_time(df, festival='No').mean()
                 col5.metric('Mean time no festival', mean_time_no_festival)
     
             with col6:
-                std_time_no_festival = (df.loc[df.loc[:, 'Festival'] == 'No', 
-                                               'Time_taken(min)']
-                                          .std())
+                std_time_no_festival = fest_time(df, festival='No').std()
                 col6.metric('Std deviation time no festival', std_time_no_festival)
     
         with st.container():
             st.markdown("""---""")
             st.title('Mean distance')
-            fig_mean_dist = plot_fig_mean_dist(df)
-            st.plotly_chart(fig_mean_dist)
+            plot_fig_mean_dist(df)
     
         with st.container():
             st.markdown("""---""")
             st.title('Mean delivery time by city')
-            fig_time_city = plot_fig_time_city(df)
-            st.plotly_chart(fig_time_city)
+            plot_fig_time_city(df)
     
         with st.container():
             st.markdown("""---""")
             st.title('Time distribution')
-            fig_sun = plot_fig_sun(df)
-            st.plotly_chart(fig_sun)
+            plot_fig_sun(df)
     
     ### 2.3.2 Tactical View
     with tab2:
         with st.container():
             st.title('Week')
-            chart_week = plot_chart_week(df)
-            st.plotly_chart(chart_week)
+            plot_chart_week(df)
     
         with st.container():
             st.title('Orders by deliverer per week')
-            chart_deliverer_wk = plot_chart_deliverer_wk(df)
-            st.plotly_chart(chart_deliverer_wk)
+            plot_chart_deliverer_wk(df)
     
-
     ### 2.3.4 Map
     with tab3:
         st.markdown('##### City location traffic')
-        city_location_traffic = plot_city_location_traffic(df)
-        st.map(city_location_traffic,
-               latitude='Delivery_location_latitude',
-               longitude='Delivery_location_longitude')
+        plot_city_location_traffic(df)
