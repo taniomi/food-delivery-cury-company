@@ -83,4 +83,4 @@ if __name__ == "__main__":
     ### 2.3.4 Map
     with tab3:
         st.markdown('##### City location traffic')
-        plot_city_location_traffic(df)
+        map_city_loc_traffic(df)

@@ -63,14 +63,14 @@ def filters_df(df):
     filter_traffic = st.sidebar.multiselect('Choose traffic conditions:',
                                             ['Low','Medium','High','Jam'],
                                             default=['Low','Medium','High','Jam'])
-    filtered_lines = ((df['Order_Date'] < filter_date)
-                      & (df['Road_traffic_density'].isin(filter_traffic)))
-    df = df.loc[filtered_lines,:]
 
-    return df
+    return df[(df['Order_Date'] < filter_date) & (df['Road_traffic_density'].isin(filter_traffic))]
 
 
 
+###############################################################################
+#                       BUSINESS VIEW                                         #
+###############################################################################
 def fest_time(df, festival):
     festival_time = df.loc[df.loc[:, 'Festival'] == festival, 'Time_taken(min)']
 
@@ -110,14 +110,13 @@ def plot_fig_mean_dist(df):
                                     x['Delivery_location_longitude'])),
                          axis=1))
     mean_dist = (df.loc[:, ['City', 'Distance']]
-                  .groupby('City')
-                  .mean()
-                  .reset_index())
+                   .groupby('City')
+                   .mean()
+                   .reset_index())
     fig_mean_dist = go.Figure(data=[go.Pie(labels=mean_dist['City'],
                                            values=mean_dist['Distance'],
                                            hole=0.5)])
     return st.plotly_chart(fig_mean_dist)
-
 
 
 
@@ -183,16 +182,71 @@ def plot_chart_deliverer_wk(df):
     
 
 
-def plot_city_location_traffic(df):
-    city_location_traffic = df[(df['City'] != 'NaN') & (df['Road_traffic_density'] != 'NaN')]
-    city_location_traffic = (df.loc[:,['City',
-                                       'Road_traffic_density',
-                                       'Delivery_location_latitude',
-                                       'Delivery_location_longitude']]
-                                .groupby(['City','Road_traffic_density'])
-                                .median().reset_index())
-    map = st.map(city_location_traffic,
+def map_city_loc_traffic(df):
+    city_loc_traffic = (df.loc[:,['City','Road_traffic_density','Delivery_location_latitude','Delivery_location_longitude']]
+                          .groupby(['City','Road_traffic_density'])
+                          .median().reset_index())
+    map = st.map(city_loc_traffic,
                  latitude='Delivery_location_latitude',
-                 longitude='Delivery_location_longitude',
-                 size='City')
+                 longitude='Delivery_location_longitude')
     return map
+
+
+
+###############################################################################
+#                       DELIVERER VIEW                                        #
+###############################################################################
+def df_mean_rating_by_deliv(df):
+    mean_rating_by_deliv = (df.loc[:,['Delivery_person_ID', 'Delivery_person_Ratings']]
+                              .groupby('Delivery_person_ID')
+                              .mean()
+                              .reset_index())
+    return st.dataframe(mean_rating_by_deliv)
+
+
+
+def df_mean_rating_by_traffic(df):
+    mean_rating_by_traffic = (df[['Delivery_person_Ratings','Road_traffic_density']]
+                                .groupby('Road_traffic_density')
+                                .agg({'Delivery_person_Ratings': ['mean', 'std']}))
+    mean_rating_by_traffic.columns = ['delivery_mean', 'delivery_std']
+    mean_rating_by_traffic.reset_index()
+
+    return st.dataframe(mean_rating_by_traffic)
+
+
+
+def df_mean_rating_by_climate(df):
+    mean_rating_by_climate = (df[['Delivery_person_Ratings','Weatherconditions']]
+                                .groupby('Weatherconditions')
+                                .agg({'Delivery_person_Ratings': ['mean', 'std']}))
+    mean_rating_by_climate.columns = ['delivery_mean', 'delivery_std']
+    mean_rating_by_climate.reset_index()
+
+    return st.dataframe(mean_rating_by_climate)
+
+
+
+def df_fastest_deliverers(df):
+    dfaux = (df[['Delivery_person_ID', 'City', 'Time_taken(min)']]
+               .groupby(['City', 'Delivery_person_ID']).min()
+               .sort_values(['City', 'Time_taken(min)']).reset_index())
+    dfaux1 = dfaux[dfaux.City == 'Metropolitian'].head(10)
+    dfaux2 = dfaux[dfaux.City == 'Semi-Urban'].head(10)
+    dfaux3 = dfaux[dfaux.City == 'Urban'].head(10)
+    fastest_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
+
+    return st.dataframe(fastest_deliverers)
+
+
+
+def df_slowest_deliverers(df):
+    dfaux = (df[['Delivery_person_ID', 'City', 'Time_taken(min)']]
+               .groupby(['City', 'Delivery_person_ID']).max()
+               .sort_values(['City', 'Time_taken(min)'], ascending=False).reset_index())
+    dfaux1 = dfaux[dfaux.City == 'Metropolitian'].head(10)
+    dfaux2 = dfaux[dfaux.City == 'Semi-Urban'].head(10)
+    dfaux3 = dfaux[dfaux.City == 'Urban'].head(10)
+    slowest_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
+
+    return st.dataframe(slowest_deliverers)
