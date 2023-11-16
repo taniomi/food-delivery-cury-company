@@ -18,7 +18,7 @@ if __name__ == "__main__":
     
         df = filters_df(df)
 
-    st.sidebar.markdown('Powered by Taniomi')
+        st.markdown('Powered by Taniomi')
     
     ## 2.3 Tabs
     tab1, tab2, tab3 = st.tabs(['Management', 'Tactical', 'Map'])

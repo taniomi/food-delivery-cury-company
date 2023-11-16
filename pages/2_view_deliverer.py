@@ -54,8 +54,8 @@ if __name__ == "__main__":
 
             with col1:
                 st.subheader('Fastest deliverers')
-                df_fastest_deliverers(df)
+                df_speed_deliverers(df, asc=True)
      
             with col2:
                 st.subheader('Slowest deliverers')
-                df_slowest_deliverers(df)
+                df_speed_deliverers(df, asc=False)

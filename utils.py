@@ -227,26 +227,15 @@ def df_mean_rating_by_climate(df):
 
 
 
-def df_fastest_deliverers(df):
+def df_speed_deliverers(df, asc):
     dfaux = (df[['Delivery_person_ID', 'City', 'Time_taken(min)']]
-               .groupby(['City', 'Delivery_person_ID']).min()
-               .sort_values(['City', 'Time_taken(min)']).reset_index())
+             .groupby(['City', 'Delivery_person_ID'])
+             .mean()
+             .sort_values(['City', 'Time_taken(min)'], ascending=asc)
+             .reset_index())
     dfaux1 = dfaux[dfaux.City == 'Metropolitian'].head(10)
     dfaux2 = dfaux[dfaux.City == 'Semi-Urban'].head(10)
     dfaux3 = dfaux[dfaux.City == 'Urban'].head(10)
-    fastest_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
+    speed_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
 
-    return st.dataframe(fastest_deliverers)
-
-
-
-def df_slowest_deliverers(df):
-    dfaux = (df[['Delivery_person_ID', 'City', 'Time_taken(min)']]
-               .groupby(['City', 'Delivery_person_ID']).max()
-               .sort_values(['City', 'Time_taken(min)'], ascending=False).reset_index())
-    dfaux1 = dfaux[dfaux.City == 'Metropolitian'].head(10)
-    dfaux2 = dfaux[dfaux.City == 'Semi-Urban'].head(10)
-    dfaux3 = dfaux[dfaux.City == 'Urban'].head(10)
-    slowest_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
-
-    return st.dataframe(slowest_deliverers)
+    return st.dataframe(speed_deliverers)
