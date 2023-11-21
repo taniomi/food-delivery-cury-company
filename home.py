@@ -6,8 +6,7 @@ st.set_page_config(
     page_icon=""
 )
 
-image_path = "C:/Users/Milena/Documents/PythonScripts/CDS/food-delivery-dataset/"
-image = Image.open(image_path + "cury-rice.png")
+image = Image.open("cury-rice.png")
 st.sidebar.image(image, width=120)
 
 with st.sidebar:

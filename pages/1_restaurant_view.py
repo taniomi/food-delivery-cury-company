@@ -2,7 +2,7 @@ from utils import *
 
 if __name__ == "__main__":
 
-    df_og = pd.read_csv('train.csv')
+s
     df = df_og.copy()
     df = clean_df(df)
     
