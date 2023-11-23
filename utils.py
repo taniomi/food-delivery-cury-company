@@ -183,12 +183,11 @@ def plot_chart_deliverer_wk(df):
 
 
 def map_city_loc_traffic(df):
-    city_loc_traffic = (df.loc[:,['City','Road_traffic_density','Delivery_location_latitude','Delivery_location_longitude']]
+    df = (df[['City','Road_traffic_density','Delivery_location_latitude','Delivery_location_longitude']]
                           .groupby(['City','Road_traffic_density'])
                           .median().reset_index())
-    map = st.map(city_loc_traffic,
-                 latitude='Delivery_location_latitude',
-                 longitude='Delivery_location_longitude')
+    map = st.map(df,latitude='Delivery_location_latitude',longitude='Delivery_location_longitude')
+
     return map
 
 
@@ -239,3 +238,60 @@ def df_speed_deliverers(df, asc):
     speed_deliverers = pd.concat([dfaux1, dfaux2, dfaux3]).reset_index(drop=True)
 
     return st.dataframe(speed_deliverers)
+
+
+
+
+###############################################################################
+#                       BUSINESS VIEW                                         #
+###############################################################################
+def orders_per(df, column):
+    return df[['ID',column]].groupby([column])['ID'].count().reset_index()
+
+
+
+def plot_fig_orders_per_traffic(orders_per_traffic):
+    orders_per_traffic = orders_per_traffic[orders_per_traffic.Road_traffic_density != 'NaN']
+    orders_per_traffic['Orders_%'] = orders_per_traffic.ID / orders_per_traffic.ID.sum()
+
+    fig = px.pie(orders_per_traffic,values='Orders_%',names='Road_traffic_density',height=350,width=400)
+
+    return st.plotly_chart(fig)
+
+
+
+def plot_fig_orders_per_city_traffic(df):
+    df = df[(df.City != 'NaN') & (df.Road_traffic_density != 'NaN')]
+
+    fig = px.bar(df,x='City',y='ID',color='Road_traffic_density',height=400)
+
+    return st.plotly_chart(fig)
+
+
+
+def plot_order_wk_per_deliverer_wk(df, orders_per_week):
+    # orders per week/single deliverer per week
+    deliverers_per_week = (df[['Delivery_person_ID','Week_Year']]
+                           .groupby('Week_Year')
+                           .nunique().reset_index())
+    df = pd.merge(orders_per_week, deliverers_per_week, how='inner')
+    df.Order_by_deliverer = df.ID / df.Delivery_person_ID
+
+    fig = px.line(df,x='Week_Year',y='Order_by_deliverer',height=350)
+
+    return st.plotly_chart(fig)
+
+
+
+def plot_central_city_per_traffic(df):
+    df = (df[['City','Road_traffic_density','Delivery_location_latitude','Delivery_location_longitude']]
+          .groupby(['City','Road_traffic_density'])
+          .median().reset_index())
+    df = df[(df.City != 'NaN') & (df.Road_traffic_density != 'NaN')]
+
+    map = folium.Map(width='100%', height='60%')
+
+    for index,data in df.iterrows():
+        folium.Marker([data.Delivery_location_latitude,data.Delivery_location_longitude],
+                      tooltip=[data[['City','Road_traffic_density']]]).add_to(map)
+    return map
